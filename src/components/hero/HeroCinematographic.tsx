@@ -255,27 +255,21 @@ export const HeroCinematographic: React.FC = () => {
           />
         </div>
 
-        {/* 6. Indicador de Rolagem Inicial (garantido dentro da viewport no topo) */}
+        {/* 6. Indicador de Rolagem Inicial (com destaque e brilho no mobile e desktop) */}
         <div
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-1.5 text-gold/80 transition-opacity duration-300 pointer-events-none"
+          className="absolute bottom-10 md:bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-1.5 transition-opacity duration-300 pointer-events-none w-max max-w-[90vw]"
           style={{ opacity: Math.max(0, 1 - scrollProgress * 8) }}
           aria-hidden="true"
         >
-          <span className="text-[10px] font-sans uppercase tracking-[0.25em] text-champagne-light/80 font-medium">
-            Role para Explorar
-          </span>
-          <ChevronDown size={15} className="animate-bounce text-gold" />
+          <div className="flex flex-col items-center gap-1.5 px-5 py-2.5 rounded-full bg-wine-deep/90 backdrop-blur-md border border-gold/50 animate-luxury-glow">
+            <span className="text-[11px] font-sans uppercase tracking-[0.22em] text-champagne-light font-semibold whitespace-nowrap drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+              Role para Explorar
+            </span>
+            <ChevronDown size={15} className="animate-bounce text-gold-light drop-shadow-[0_0_8px_rgba(223,193,132,0.8)]" />
+          </div>
         </div>
 
-        {/* 7. HUD de diagnóstico — existe SOMENTE em desenvolvimento (removido do bundle de produção) */}
-        {import.meta.env.DEV && (
-          <pre
-            data-hero-debug
-            className="absolute bottom-2 left-2 z-[60] m-0 p-1.5 text-[10px] leading-tight font-mono text-white bg-black/70 pointer-events-none whitespace-pre"
-          >
-            {debug.hud}
-          </pre>
-        )}
+
       </div>
     </div>
   );
