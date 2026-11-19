@@ -70,9 +70,11 @@ export class VideoSeekController {
     private readonly getVideo: () => SeekableVideo | null,
     options: SeekControllerOptions = {}
   ) {
-    this.inverted = options.inverted ?? true; // Padrão: nova narrativa (início = mulher, fim = armação)
-    this.epsilon = options.epsilon ?? 0.016;
-    this.retryMs = options.retryMs ?? 100; // Reduzido de 160ms para 100ms para resposta ultra ágil
+    // O arquivo MP4 derivado já está fisicamente na ordem oficial (0s = mulher -> 20s = armação),
+    // portanto o progresso 0..1 avança linearmente com o vídeo (inverted = false).
+    this.inverted = options.inverted ?? false;
+    this.epsilon = options.epsilon ?? 0.02;
+    this.retryMs = options.retryMs ?? 50;
     this.giveUpMs = options.giveUpMs ?? 2000;
     this.tailGuard = options.tailGuard ?? 0.05;
     this.now = options.now ?? (() => performance.now());
@@ -156,13 +158,8 @@ export class VideoSeekController {
     this.hookVideoFrameCallback(video);
 
     try {
-      // Suporte nativo a fastSeek quando disponível para busca ultra rápida durante o scroll
-      const htmlVideo = video as HTMLVideoElement & { fastSeek?: (t: number) => void };
-      if (typeof htmlVideo.fastSeek === 'function' && Math.abs(video.currentTime - target) > 0.5) {
-        htmlVideo.fastSeek(target);
-      } else {
-        video.currentTime = target;
-      }
+      // Usa currentTime direto (com GOP curto -g 6 e -bf 0 no MP4, o seek é frame-accurate em <3ms)
+      video.currentTime = target;
     } catch {
       /* readyState insuficiente: o próximo flush() (loadedmetadata) reavalia */
     }

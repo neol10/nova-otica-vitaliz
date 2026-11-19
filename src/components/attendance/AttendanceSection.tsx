@@ -85,7 +85,8 @@ export const AttendanceSection: React.FC = () => {
                   src="/assets/images/editorial/vitaliz-atendimento.webp"
                   alt="Ambiente exclusivo de atendimento da Nova Ótica Vitaliz"
                   className="w-full h-full object-cover object-center transition-transform duration-700 ease-luxury group-hover:scale-103"
-                  loading="lazy"
+                  loading="eager"
+                  decoding="async"
                   width="1199"
                   height="1312"
                 />

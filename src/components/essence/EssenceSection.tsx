@@ -63,7 +63,8 @@ export const EssenceSection: React.FC = () => {
                   src="/assets/images/editorial/vitaliz-essencia.webp"
                   alt="A Essência Vitaliz — Detalhes em acetato translúcido vinho e acabamentos nobres"
                   className="w-full h-full object-cover transition-transform duration-700 ease-luxury group-hover:scale-105"
-                  loading="lazy"
+                  loading="eager"
+                  decoding="async"
                   width="1199"
                   height="1312"
                 />

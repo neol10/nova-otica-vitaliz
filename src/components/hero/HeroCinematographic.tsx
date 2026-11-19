@@ -44,12 +44,13 @@ export const HeroCinematographic: React.FC = () => {
   const [isMobile, setIsMobile] = useState<boolean>(() => isMobileViewport());
   const prefersReducedMotion = useReducedMotion();
 
-  // Controlador de seeking otimizado: throttle suave para não sobrecarregar a GPU no primeiro carregamento
+  // Controlador de seeking otimizado: vídeo já invertido fisicamente com GOP curto (-g 6, zero B-frames)
   const [seek] = useState(
     () =>
       new VideoSeekController(() => videoRef.current, {
-        epsilon: 0.035, // ~1 quadro a 30fps para evitar seeks redundantes
-        retryMs: 80, // Responde rápido se o destino mudar com o scroll
+        inverted: false,
+        epsilon: 0.02, // ~0.6 quadro a 30fps para fluidez contínua sem seeks redundantes
+        retryMs: 50, // Resposta imediata durante o scrub
       })
   );
   const renderedProgressRef = useRef<number>(0);

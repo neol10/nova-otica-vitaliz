@@ -86,7 +86,8 @@ export const CollectionsSection: React.FC = () => {
                     src={cat.imageSrc}
                     alt={cat.title}
                     className="w-full h-full object-cover transition-transform duration-700 ease-luxury group-hover:scale-105"
-                    loading="lazy"
+                    loading="eager"
+                    decoding="async"
                     width="1199"
                     height="1312"
                   />
