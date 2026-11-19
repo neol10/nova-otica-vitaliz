@@ -11,21 +11,22 @@ import { ChevronDown, AlertCircle } from 'lucide-react';
 gsap.registerPlugin(ScrollTrigger);
 
 /**
- * Distâncias de rolagem cinematográficas responsivas (APROVADAS — não alterar):
- * - Desktop: 4000px
- * - Tablet: 3200px
- * - Mobile: 2600px
+ * Distâncias de rolagem cinematográficas otimizadas:
+ * Ágeis e leves para navegação fluida desde o primeiro acesso.
+ * - Desktop: 1700px (anterior 4000px)
+ * - Tablet: 1400px (anterior 3200px)
+ * - Mobile: 1200px (anterior 2600px)
  */
 function getHeroScrollDistance(): number {
-  if (typeof window === 'undefined') return 4000;
+  if (typeof window === 'undefined') return 1700;
   const width = window.innerWidth;
   if (width < 768) {
-    return 2600; // Mobile (< 768px)
+    return 1200; // Mobile (< 768px)
   }
   if (width < 1024) {
-    return 3200; // Tablet (768px - 1023px)
+    return 1400; // Tablet (768px - 1023px)
   }
-  return 4000; // Desktop (>= 1024px)
+  return 1700; // Desktop (>= 1024px)
 }
 
 /** Máximo de recarregamentos do vídeo após erro de mídia antes de cair no modo estático. */
@@ -43,8 +44,14 @@ export const HeroCinematographic: React.FC = () => {
   const [isMobile, setIsMobile] = useState<boolean>(() => isMobileViewport());
   const prefersReducedMotion = useReducedMotion();
 
-  // Controlador de seeking: mantém só o destino mais recente, nunca bloqueia o scroll.
-  const [seek] = useState(() => new VideoSeekController(() => videoRef.current));
+  // Controlador de seeking otimizado: throttle suave para não sobrecarregar a GPU no primeiro carregamento
+  const [seek] = useState(
+    () =>
+      new VideoSeekController(() => videoRef.current, {
+        epsilon: 0.035, // ~1 quadro a 30fps para evitar seeks redundantes
+        retryMs: 80, // Responde rápido se o destino mudar com o scroll
+      })
+  );
   const renderedProgressRef = useRef<number>(0);
   const mediaRetriesRef = useRef<number>(0);
 
