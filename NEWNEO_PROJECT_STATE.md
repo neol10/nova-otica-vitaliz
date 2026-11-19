@@ -48,13 +48,14 @@
 | **Etapa 7** | Auditoria de Performance, Acessibilidade e SEO | `APROVADA` |
 | **Integração Imagens** | Integração Definitiva das 6 Imagens Editoriais Aprovadas (WebP) | `APROVADA` |
 | **Etapa Final** | WhatsApp Oficial Confirmado, Auditoria e Publicação GitHub | `CONCLUIDA` |
+| **Hotfix Crítico** | Hero Scroll Controller, Watchdog de Seeking e Lifecycle ScrollTrigger | `CONCLUIDO` |
 
 ---
 
 ## 5. Áreas Congeladas & Decisões Registradas
 * **Arquivo Master Intacto:** `hero cinematografico scrool.mp4` (23.738.122 bytes) preservado localmente sem modificações.
-* **Hero Cinematográfico:** Implementação congelada e aprovada, sem alterações no seeking ou ScrollTrigger.
-* **Header Responsivo:** Calibrado com `lg:flex` (desktop) e `lg:hidden` (menu compacto/gaveta), eliminando qualquer colisão em 768px (tablet) e mantendo linha única em 320px/360px.
+* **Hero Cinematográfico & VideoSeekController:** Controlado via `videoSeekController.ts` com watchdog de 250ms, descarte de seeks obsoletos e sincronismo bidirecional ultra-estável sem bloqueio de thread. Distância calibrada e preservada (4000px desktop, 3200px tablet, 2600px mobile).
+* **Header Responsivo:** Calibrado com `lg:flex` (desktop) e `lg:hidden` (menu compacto/gaveta), com destravamento automático de scroll (`overflow: auto`) ao redimensionar para desktop ou fechar gaveta.
 * **Sem Autoplay Obrigatório no Mobile:** Fallback estático e elegante para mobile e para usuários com movimento reduzido.
 * **Imagens Originais Preservadas:** Os 6 arquivos PNG originais em `imagens/` permanecem salvaguardados e inalterados localmente.
 * **Repositório GitHub:** `https://github.com/neol10/nova-otica-vitaliz.git` (branch `main`).

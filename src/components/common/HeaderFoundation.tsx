@@ -47,6 +47,18 @@ export const HeaderFoundation: React.FC = () => {
     }
   }, [isMobileMenuOpen]);
 
+  // Se o viewport cruzar o breakpoint `lg` (rotação do tablet / resize) com o menu aberto,
+  // a gaveta some via CSS (lg:hidden) mas o estado continuava "aberto" e o body ficava com
+  // overflow:hidden — página sem rolagem. Fecha o menu (e libera o scroll) ao entrar em `lg`.
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 1024px)');
+    const handleChange = (event: MediaQueryListEvent) => {
+      if (event.matches) setIsMobileMenuOpen(false);
+    };
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
   return (
     <>
       <header

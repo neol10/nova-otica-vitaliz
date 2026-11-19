@@ -3,13 +3,15 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { HeroOverlay } from './HeroOverlay';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { useHeroDebug } from '../../hooks/useHeroDebug';
 import { isMobileViewport } from '../../utils/device';
+import { VideoSeekController } from '../../utils/videoSeekController';
 import { ChevronDown, AlertCircle } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
 
 /**
- * Distâncias de rolagem cinematográficas responsivas:
+ * Distâncias de rolagem cinematográficas responsivas (APROVADAS — não alterar):
  * - Desktop: 4000px
  * - Tablet: 3200px
  * - Mobile: 2600px
@@ -26,22 +28,28 @@ function getHeroScrollDistance(): number {
   return 4000; // Desktop (>= 1024px)
 }
 
+/** Máximo de recarregamentos do vídeo após erro de mídia antes de cair no modo estático. */
+const MAX_MEDIA_RETRIES = 2;
+
 export const HeroCinematographic: React.FC = () => {
   const trackRef = useRef<HTMLDivElement>(null);
   const stickyRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [scrollProgress, setScrollProgress] = useState<number>(0);
   const [scrollDistance, setScrollDistance] = useState<number>(() => getHeroScrollDistance());
-  const [isVideoReady, setIsVideoReady] = useState<boolean>(false);
+  // Guarda QUAL fonte já está pronta: ao trocar de fonte (desktop↔mobile) o poster volta sozinho.
+  const [readySrc, setReadySrc] = useState<string | null>(null);
   const [hasMediaError, setHasMediaError] = useState<boolean>(false);
   const [isMobile, setIsMobile] = useState<boolean>(() => isMobileViewport());
   const prefersReducedMotion = useReducedMotion();
 
-  // Referências para controle de seeking desacoplado e amortecido
-  const targetTimeRef = useRef<number>(0);
-  const rafIdRef = useRef<number | null>(null);
-  const isSeekingRef = useRef<boolean>(false);
-  const pendingTimeRef = useRef<number | null>(null);
+  // Controlador de seeking: mantém só o destino mais recente, nunca bloqueia o scroll.
+  const [seek] = useState(() => new VideoSeekController(() => videoRef.current));
+  const renderedProgressRef = useRef<number>(0);
+  const mediaRetriesRef = useRef<number>(0);
+
+  // Diagnóstico (inerte em produção)
+  const debug = useHeroDebug(videoRef, seek);
 
   // Seleção de assets com base no viewport
   const videoSrc = isMobile
@@ -56,122 +64,101 @@ export const HeroCinematographic: React.FC = () => {
     ? '/assets/images/hero-final-mobile.webp'
     : '/assets/images/hero-final-desktop.webp';
 
-  // Monitoramento de resize dinâmico com recálculo da distância
+  const isVideoReady = readySrc === videoSrc;
+
+  // Resize: apenas recalcula distância/asset (com debounce). NÃO chamamos
+  // ScrollTrigger.refresh() manualmente: o GSAP já faz refresh próprio no resize
+  // e ignora o "resize" causado pela barra de URL do mobile. O refresh manual a
+  // cada evento (sem debounce) disparava recálculos no meio da rolagem.
   useEffect(() => {
-    const handleResize = () => {
-      const newDistance = getHeroScrollDistance();
-      setScrollDistance(newDistance);
-
-      const mobileNow = isMobileViewport();
-      if (mobileNow !== isMobile) {
-        setIsMobile(mobileNow);
-      }
-      ScrollTrigger.refresh();
+    let timer: number | undefined;
+    const apply = () => {
+      setScrollDistance(getHeroScrollDistance());
+      setIsMobile(isMobileViewport());
     };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [isMobile]);
-
-  // Rotina controlada de Seeking via requestAnimationFrame
-  const executeSeek = useCallback((time: number) => {
-    const video = videoRef.current;
-    if (!video || isNaN(time)) return;
-
-    // Limita o tempo ao intervalo seguro [0, duration - 0.05]
-    const maxDuration = video.duration && !isNaN(video.duration) ? video.duration : 20.0;
-    const safeTime = Math.max(0, Math.min(time, maxDuration - 0.05));
-
-    // Se a diferença for imperceptível (< 20ms), evita seek redundante
-    if (Math.abs(video.currentTime - safeTime) < 0.02) {
-      return;
-    }
-
-    if (video.seeking) {
-      pendingTimeRef.current = safeTime;
-      return;
-    }
-
-    try {
-      isSeekingRef.current = true;
-      video.currentTime = safeTime;
-    } catch {
-      isSeekingRef.current = false;
-    }
+    const onResize = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(apply, 150);
+    };
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('resize', onResize);
+    };
   }, []);
 
-  // Listener para quando o seek é completado pelo hardware
-  const handleSeeked = useCallback(() => {
-    isSeekingRef.current = false;
-    if (pendingTimeRef.current !== null) {
-      const nextTime = pendingTimeRef.current;
-      pendingTimeRef.current = null;
-      executeSeek(nextTime);
-    }
-  }, [executeSeek]);
+  // Ciclo de vida do controlador: cancela frame pendente ao desmontar e retoma ao voltar à aba.
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') seek.flush();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      seek.cancel();
+    };
+  }, [seek]);
 
-  // Agendamento de seek suave via rAF
-  const scheduleSeek = useCallback(
-    (time: number) => {
-      targetTimeRef.current = time;
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current);
+  // Progresso do scroll -> destino do vídeo + estado visual (renderiza só se mudou o bastante)
+  const handleProgress = useCallback(
+    (progress: number) => {
+      seek.request(progress);
+      const last = renderedProgressRef.current;
+      if (progress === 0 || progress === 1 || Math.abs(progress - last) >= 0.002) {
+        renderedProgressRef.current = progress;
+        setScrollProgress(progress);
       }
-      rafIdRef.current = requestAnimationFrame(() => {
-        executeSeek(targetTimeRef.current);
-      });
     },
-    [executeSeek]
+    [seek]
   );
 
   // Inicialização do GSAP ScrollTrigger vinculado ao track físico responsivo
   useEffect(() => {
-    // Se o usuário preferir movimento reduzido ou houver erro, desativa o pinning
+    // Se o usuário preferir movimento reduzido ou houver erro, desativa o efeito
     if (prefersReducedMotion || hasMediaError) return;
 
     const track = trackRef.current;
-    const video = videoRef.current;
-    if (!track || !video) return;
-
-    // Pausa o vídeo por padrão (controle estrito pelo scroll)
-    video.pause();
+    if (!track) return;
 
     const ctx = gsap.context(() => {
       ScrollTrigger.create({
         trigger: track,
         start: 'top top',
         end: 'bottom bottom',
-        scrub: 0.8, // Amortecimento milimétrico contra trepidação
-        onUpdate: (self) => {
-          const progress = self.progress;
-          setScrollProgress(progress);
-
-          const duration = video.duration && !isNaN(video.duration) ? video.duration : 20.0;
-          const targetTime = progress * duration;
-          scheduleSeek(targetTime);
-        },
+        onUpdate: (self) => handleProgress(self.progress),
+        // Sincroniza no (re)cálculo: cobre recarga no meio do documento e resize.
+        onRefresh: (self) => handleProgress(self.progress),
       });
     }, track);
 
     return () => {
       ctx.revert();
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current);
-      }
     };
-  }, [prefersReducedMotion, hasMediaError, scheduleSeek, scrollDistance]);
+  }, [prefersReducedMotion, hasMediaError, scrollDistance, handleProgress]);
 
   // Handlers do elemento de vídeo
   const handleLoadedData = () => {
-    setIsVideoReady(true);
-    if (videoRef.current) {
-      videoRef.current.currentTime = 0;
-    }
+    setReadySrc(videoSrc);
+    videoRef.current?.pause();
+    // Alinha o vídeo ao progresso REAL do scroll (não força 0): cobre recarga no meio da página.
+    seek.reset();
+    seek.flush();
   };
 
   const handleVideoError = () => {
+    debug.logError();
+    const video = videoRef.current;
+    if (video && mediaRetriesRef.current < MAX_MEDIA_RETRIES) {
+      // Erro de mídia (ex.: falha de rede durante um seek): tenta recarregar antes de desistir.
+      mediaRetriesRef.current += 1;
+      setReadySrc(null);
+      seek.reset();
+      video.load();
+      return;
+    }
+    // Falha persistente: modo estático — a navegação permanece livre.
     setHasMediaError(true);
-    setIsVideoReady(false);
+    setReadySrc(null);
   };
 
   // Renderização do Modo Fallback (Reduced Motion ou Erro de Mídia)
@@ -226,14 +213,17 @@ export const HeroCinematographic: React.FC = () => {
 
         {/* 2. Camada do Vídeo Controlado por Scroll */}
         <video
+          key={videoSrc}
           ref={videoRef}
           src={videoSrc}
           playsInline
           muted
           preload="auto"
+          onLoadedMetadata={() => seek.flush()}
           onLoadedData={handleLoadedData}
-          onSeeked={handleSeeked}
+          onSeeked={() => seek.flush()}
           onError={handleVideoError}
+          {...debug.eventProps}
           className={`relative z-10 w-full h-full object-contain sm:object-cover transition-opacity duration-500 ${
             isVideoReady ? 'opacity-100' : 'opacity-0'
           }`}
@@ -276,6 +266,16 @@ export const HeroCinematographic: React.FC = () => {
           </span>
           <ChevronDown size={15} className="animate-bounce text-gold" />
         </div>
+
+        {/* 7. HUD de diagnóstico — existe SOMENTE em desenvolvimento (removido do bundle de produção) */}
+        {import.meta.env.DEV && (
+          <pre
+            data-hero-debug
+            className="absolute bottom-2 left-2 z-[60] m-0 p-1.5 text-[10px] leading-tight font-mono text-white bg-black/70 pointer-events-none whitespace-pre"
+          >
+            {debug.hud}
+          </pre>
+        )}
       </div>
     </div>
   );
