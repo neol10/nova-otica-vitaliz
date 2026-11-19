@@ -25,6 +25,8 @@ export interface SeekStats {
 }
 
 export interface SeekControllerOptions {
+  /** Se o vídeo progride na ordem invertida (1 -> 0) em relação ao scroll (0 -> 1). */
+  inverted?: boolean;
   /** Diferença mínima (s) que justifica um novo seek. Menor que 1 frame a 30fps. */
   epsilon?: number;
   /** Seek em andamento há mais que isso (ms) é considerado obsoleto: reemite o destino atual. */
@@ -39,14 +41,23 @@ export interface SeekControllerOptions {
 }
 
 export class VideoSeekController {
-  readonly stats: SeekStats = { issued: 0, staleRetries: 0, giveUps: 0 };
+  readonly stats: SeekStats & { framesDelivered: number; rVFCSupported: boolean } = {
+    issued: 0,
+    staleRetries: 0,
+    giveUps: 0,
+    framesDelivered: 0,
+    rVFCSupported: false,
+  };
 
   private progress = 0;
   private requested: number | null = null;
   private issuedAt = 0;
   private reissued = false;
   private frame: number | null = null;
+  private rvfcHandle: number | null = null;
+  private isAwaitingFrame = false;
 
+  readonly inverted: boolean;
   private readonly epsilon: number;
   private readonly retryMs: number;
   private readonly giveUpMs: number;
@@ -59,9 +70,10 @@ export class VideoSeekController {
     private readonly getVideo: () => SeekableVideo | null,
     options: SeekControllerOptions = {}
   ) {
+    this.inverted = options.inverted ?? true; // Padrão: nova narrativa (início = mulher, fim = armação)
     this.epsilon = options.epsilon ?? 0.016;
-    this.retryMs = options.retryMs ?? 160;
-    this.giveUpMs = options.giveUpMs ?? 2500;
+    this.retryMs = options.retryMs ?? 100; // Reduzido de 160ms para 100ms para resposta ultra ágil
+    this.giveUpMs = options.giveUpMs ?? 2000;
     this.tailGuard = options.tailGuard ?? 0.05;
     this.now = options.now ?? (() => performance.now());
     this.scheduleFn = options.schedule ?? ((cb) => requestAnimationFrame(cb));
@@ -75,8 +87,9 @@ export class VideoSeekController {
     this.schedule();
   }
 
-  /** Reavalia o destino atual (ex.: após seeked / loadedmetadata / volta de aba). */
+  /** Reavalia o destino atual (ex.: após seeked / loadedmetadata / volta de aba / rVFC). */
   flush(): void {
+    this.isAwaitingFrame = false;
     this.schedule();
   }
 
@@ -84,18 +97,32 @@ export class VideoSeekController {
   reset(): void {
     this.requested = null;
     this.reissued = false;
+    this.isAwaitingFrame = false;
   }
 
-  /** Cancela o frame pendente. O controlador continua utilizável (StrictMode remonta). */
+  /** Cancela o frame pendente e listeners de vídeo. O controlador continua utilizável. */
   cancel(): void {
     if (this.frame !== null) {
       this.cancelFn(this.frame);
       this.frame = null;
     }
+    const video = this.getVideo() as (HTMLVideoElement & { cancelVideoFrameCallback?: (id: number) => void }) | null;
+    if (video && this.rvfcHandle !== null && typeof video.cancelVideoFrameCallback === 'function') {
+      video.cancelVideoFrameCallback(this.rvfcHandle);
+      this.rvfcHandle = null;
+    }
+    this.isAwaitingFrame = false;
   }
 
   getProgress(): number {
     return this.progress;
+  }
+
+  /** Retorna o tempo alvo correspondente ao progresso atual considerando a inversão. */
+  getTargetTime(duration: number): number {
+    if (!Number.isFinite(duration) || duration <= 0) return 0;
+    const effectiveProgress = this.inverted ? (1 - this.progress) : this.progress;
+    return Math.max(0, Math.min(effectiveProgress * duration, duration - this.tailGuard));
   }
 
   private schedule(): void {
@@ -103,14 +130,39 @@ export class VideoSeekController {
     this.frame = this.scheduleFn(this.tick);
   }
 
+  private hookVideoFrameCallback(video: SeekableVideo): void {
+    const htmlVideo = video as HTMLVideoElement & {
+      requestVideoFrameCallback?: (cb: (now: number, meta: unknown) => void) => number;
+    };
+    if (typeof htmlVideo.requestVideoFrameCallback === 'function') {
+      this.stats.rVFCSupported = true;
+      if (!this.isAwaitingFrame) {
+        this.isAwaitingFrame = true;
+        this.rvfcHandle = htmlVideo.requestVideoFrameCallback(() => {
+          this.stats.framesDelivered += 1;
+          this.isAwaitingFrame = false;
+          this.rvfcHandle = null;
+          // Frame efetivamente pintado pelo compositor da GPU: reavalia se há novo destino
+          this.schedule();
+        });
+      }
+    }
+  }
+
   private issue(video: SeekableVideo, target: number, now: number): void {
-    // Marcamos como solicitado ANTES de escrever: se a escrita lançar
-    // (InvalidStateError) não entramos em laço quente de tentativas.
     this.requested = target;
     this.issuedAt = now;
     this.stats.issued += 1;
+    this.hookVideoFrameCallback(video);
+
     try {
-      video.currentTime = target;
+      // Suporte nativo a fastSeek quando disponível para busca ultra rápida durante o scroll
+      const htmlVideo = video as HTMLVideoElement & { fastSeek?: (t: number) => void };
+      if (typeof htmlVideo.fastSeek === 'function' && Math.abs(video.currentTime - target) > 0.5) {
+        htmlVideo.fastSeek(target);
+      } else {
+        video.currentTime = target;
+      }
     } catch {
       /* readyState insuficiente: o próximo flush() (loadedmetadata) reavalia */
     }
@@ -122,14 +174,12 @@ export class VideoSeekController {
     if (!video) return;
 
     const duration = video.duration;
-    // Sem metadata/duração válida: não seeka e não espera ativamente.
-    // O flush() disparado por loadedmetadata/loadeddata retoma o trabalho.
     if (!Number.isFinite(duration) || duration <= 0 || video.readyState < 1) return;
 
-    const target = Math.max(0, Math.min(this.progress * duration, duration - this.tailGuard));
+    const target = this.getTargetTime(duration);
     const now = this.now();
 
-    // Já está no quadro certo (ex.: primeiro quadro com progresso 0): não faz seek redundante.
+    // Já está no quadro exato alvo: não faz seek redundante.
     if (!video.seeking && Math.abs(video.currentTime - target) < this.epsilon) {
       this.requested = target;
       return;
@@ -143,14 +193,19 @@ export class VideoSeekController {
     if (changed) {
       if (!video.seeking) {
         this.issue(video, target, now);
-      } else if (now - this.issuedAt >= this.retryMs) {
-        // Seek em andamento ficou obsoleto/lento: substitui pelo destino MAIS RECENTE.
-        this.stats.staleRetries += 1;
-        this.issue(video, target, now);
+      } else {
+        // Se o seek em andamento demorar mais do que retryMs, OU se a diferença de destino for
+        // substancial (usuário continuou rolando rápido), substitui pelo destino MAIS RECENTE.
+        const delta = this.requested !== null ? Math.abs(this.requested - target) : 0;
+        const dynamicRetry = delta > 0.5 ? 60 : this.retryMs;
+        if (now - this.issuedAt >= dynamicRetry) {
+          this.stats.staleRetries += 1;
+          this.issue(video, target, now);
+        }
       }
+      return;
     } else if (now - this.issuedAt >= this.giveUpMs) {
-      // Mesmo destino, seek não conclui (rede/decode). Reemite uma vez e depois desiste;
-      // um novo request() (scroll) reinicia o ciclo. Nunca espera para sempre.
+      // Mesmo destino sem concluir: reemite uma vez e desiste até novo scroll.
       if (this.reissued) {
         this.stats.giveUps += 1;
         return;

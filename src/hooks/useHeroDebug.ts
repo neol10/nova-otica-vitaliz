@@ -36,16 +36,26 @@ export function useHeroDebug(
 
     const snapshot = () => {
       const v = videoRef.current;
+      let bufEnd = 0;
+      try {
+        if (v && v.buffered && v.buffered.length > 0) {
+          bufEnd = Number(v.buffered.end(v.buffered.length - 1).toFixed(2));
+        }
+      } catch {
+        /* noop */
+      }
       return {
         scrollY: Math.round(window.scrollY),
         progress: Number(controller.getProgress().toFixed(4)),
         currentTime: v ? Number(v.currentTime.toFixed(3)) : null,
         duration: v && Number.isFinite(v.duration) ? Number(v.duration.toFixed(2)) : null,
+        buffered: bufEnd,
         readyState: v?.readyState ?? null,
         networkState: v?.networkState ?? null,
         seeking: v?.seeking ?? null,
         scrollTriggers: ScrollTrigger.getAll().length,
         bodyOverflow: document.body.style.overflow || 'auto',
+        inverted: controller.inverted,
         seekStats: { ...controller.stats },
         events: { ...counters.current },
       };
@@ -59,10 +69,10 @@ export function useHeroDebug(
       const s = snapshot();
       setHud(
         [
-          `y=${s.scrollY} p=${s.progress}`,
-          `t=${s.currentTime}/${s.duration} rs=${s.readyState} ns=${s.networkState} seeking=${s.seeking}`,
+          `y=${s.scrollY} p=${s.progress} inv=${s.inverted ? 1 : 0}`,
+          `t=${s.currentTime}/${s.duration} buf=${s.buffered}s rs=${s.readyState} ns=${s.networkState} seeking=${s.seeking}`,
           `ST=${s.scrollTriggers} body.overflow=${s.bodyOverflow}`,
-          `seeks=${s.seekStats.issued} stale=${s.seekStats.staleRetries} giveUp=${s.seekStats.giveUps}`,
+          `seeks=${s.seekStats.issued} stale=${s.seekStats.staleRetries} giveUp=${s.seekStats.giveUps} rVFC=${s.seekStats.framesDelivered}`,
           `wait=${s.events.waiting} stall=${s.events.stalled} err=${s.events.error}`,
         ].join('\n')
       );

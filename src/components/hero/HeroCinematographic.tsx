@@ -58,7 +58,7 @@ export const HeroCinematographic: React.FC = () => {
   // Diagnóstico (inerte em produção)
   const debug = useHeroDebug(videoRef, seek);
 
-  // Seleção de assets com base no viewport (Invertido: início é a modelo e final são os óculos)
+  // Seleção de assets com base no viewport (narrativa invertida: início = mulher, fim = armação)
   const videoSrc = isMobile
     ? '/assets/video/hero-scroll-mobile.mp4'
     : '/assets/video/hero-scroll-desktop.mp4';
@@ -107,11 +107,10 @@ export const HeroCinematographic: React.FC = () => {
   }, [seek]);
 
   // Progresso do scroll -> destino do vídeo + estado visual (renderiza só se mudou o bastante)
-  // Modo reverso: ao rolar para baixo (progresso 0 -> 1), o vídeo retrocede (1 -> 0: modelo -> óculos)
+  // O VideoSeekController gerencia a inversão narrativa internamente (inverted: true: modelo -> óculos).
   const handleProgress = useCallback(
     (progress: number) => {
-      const reversedProgress = 1 - progress;
-      seek.request(reversedProgress);
+      seek.request(progress);
       const last = renderedProgressRef.current;
       if (progress === 0 || progress === 1 || Math.abs(progress - last) >= 0.002) {
         renderedProgressRef.current = progress;
@@ -180,7 +179,7 @@ export const HeroCinematographic: React.FC = () => {
       >
         <img
           src={posterSrc}
-          alt="Nova Ótica Vitaliz — Armação de luxo em detalhe macro"
+          alt="Nova Ótica Vitaliz — Modelo com armação de grau"
           className="absolute inset-0 w-full h-full object-contain sm:object-cover opacity-90"
           fetchPriority="high"
         />
@@ -242,7 +241,7 @@ export const HeroCinematographic: React.FC = () => {
         {/* 3. Poster Final Congelado (aparece suavemente no término do scroll para transição imperceptível) */}
         <img
           src={finalPosterSrc}
-          alt="Quadro final — Armação de acetato translúcido vinho"
+          alt="Quadro final — Detalhe macro da armação em acetato translúcido vinho"
           className="absolute inset-0 z-15 w-full h-full object-contain sm:object-cover pointer-events-none transition-opacity duration-300"
           style={{
             opacity: scrollProgress >= 0.98 ? 1 : 0,
