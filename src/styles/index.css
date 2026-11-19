@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-wine-deep: #220912;
+    --color-champagne: #F7F2EC;
+    --color-offwhite: #FCFAF8;
+    --color-gold: #C5A059;
+    --color-graphite: #1E1E22;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: #F7F2EC;
+    color: #1E1E22;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* Foco acessível global com contraste nobre */
+  :focus-visible {
+    outline: 2px solid #C5A059;
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+}
+
+/* Regras para usuários com preferência de movimento reduzido (Acessibilidade WCAG) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Utilitários de estética de luxo */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .glass-panel {
+    background: rgba(252, 250, 248, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(197, 160, 89, 0.2);
+  }
+
+  .glass-dark {
+    background: rgba(34, 9, 18, 0.9);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(197, 160, 89, 0.25);
+  }
+}
