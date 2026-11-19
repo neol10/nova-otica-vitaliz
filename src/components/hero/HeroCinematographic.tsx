@@ -51,18 +51,18 @@ export const HeroCinematographic: React.FC = () => {
   // Diagnóstico (inerte em produção)
   const debug = useHeroDebug(videoRef, seek);
 
-  // Seleção de assets com base no viewport
+  // Seleção de assets com base no viewport (Invertido: início é a modelo e final são os óculos)
   const videoSrc = isMobile
     ? '/assets/video/hero-scroll-mobile.mp4'
     : '/assets/video/hero-scroll-desktop.mp4';
 
   const posterSrc = isMobile
-    ? '/assets/images/hero-poster-mobile.webp'
-    : '/assets/images/hero-poster-desktop.webp';
-
-  const finalPosterSrc = isMobile
     ? '/assets/images/hero-final-mobile.webp'
     : '/assets/images/hero-final-desktop.webp';
+
+  const finalPosterSrc = isMobile
+    ? '/assets/images/hero-poster-mobile.webp'
+    : '/assets/images/hero-poster-desktop.webp';
 
   const isVideoReady = readySrc === videoSrc;
 
@@ -100,9 +100,11 @@ export const HeroCinematographic: React.FC = () => {
   }, [seek]);
 
   // Progresso do scroll -> destino do vídeo + estado visual (renderiza só se mudou o bastante)
+  // Modo reverso: ao rolar para baixo (progresso 0 -> 1), o vídeo retrocede (1 -> 0: modelo -> óculos)
   const handleProgress = useCallback(
     (progress: number) => {
-      seek.request(progress);
+      const reversedProgress = 1 - progress;
+      seek.request(reversedProgress);
       const last = renderedProgressRef.current;
       if (progress === 0 || progress === 1 || Math.abs(progress - last) >= 0.002) {
         renderedProgressRef.current = progress;
@@ -204,7 +206,7 @@ export const HeroCinematographic: React.FC = () => {
         {/* 1. Camada de Poster Estático (sempre presente atrás do vídeo para evitar flash preto) */}
         <img
           src={posterSrc}
-          alt="Primeiro quadro — Armação de acetato translúcido vinho"
+          alt="Primeiro quadro — Modelo com armação Nova Ótica Vitaliz"
           className={`absolute inset-0 w-full h-full object-contain sm:object-cover transition-opacity duration-700 ease-luxury pointer-events-none ${
             isVideoReady ? 'opacity-0' : 'opacity-100'
           }`}
@@ -233,7 +235,7 @@ export const HeroCinematographic: React.FC = () => {
         {/* 3. Poster Final Congelado (aparece suavemente no término do scroll para transição imperceptível) */}
         <img
           src={finalPosterSrc}
-          alt="Quadro final — Modelo com armação Nova Ótica Vitaliz"
+          alt="Quadro final — Armação de acetato translúcido vinho"
           className="absolute inset-0 z-15 w-full h-full object-contain sm:object-cover pointer-events-none transition-opacity duration-300"
           style={{
             opacity: scrollProgress >= 0.98 ? 1 : 0,

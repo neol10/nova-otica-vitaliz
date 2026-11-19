@@ -17,14 +17,11 @@ export interface HeroOverlayProps {
  * - Contraste acessível com gradiente protetor localizado.
  */
 export const HeroOverlay: React.FC<HeroOverlayProps> = ({ progress }) => {
-  // O overlay começa a surgir em 0.60 e atinge opacidade máxima em 0.85
-  const rawProgress = (progress - 0.60) / 0.25;
-  const clampedProgress = Math.max(0, Math.min(1, rawProgress));
-
-  // Cálculo da interpolação suave de opacidade e translação vertical
-  const opacity = clampedProgress;
-  const translateY = (1 - clampedProgress) * 28; // Desloca 28px para cima ao entrar
-  const isInteractive = clampedProgress > 0.2;
+  // Com a modelo aparecendo primeiro, o título já surge visível no topo (progress 0)
+  // e suaviza levemente quando o zoom no detalhe macro do óculos se aprofunda
+  const opacity = Math.max(0.2, 1 - progress * 0.8);
+  const translateY = progress * -15;
+  const isInteractive = opacity > 0.4;
 
   return (
     <div
