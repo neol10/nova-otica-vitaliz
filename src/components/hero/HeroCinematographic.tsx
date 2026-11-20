@@ -32,6 +32,28 @@ function getHeroScrollDistance(): number {
 /** Máximo de recarregamentos do vídeo após erro de mídia antes de cair no modo estático. */
 const MAX_MEDIA_RETRIES = 2;
 
+/**
+ * Enquadramento dinâmico horizontal (`object-position`) para o Hero Mobile Full-Screen (< 768px),
+ * sincronizado 100% com o progresso do scroll sem interferir no seeking do vídeo:
+ * - Início (0.00 -> 0.25): 46% (centraliza o rosto da modelo, os olhos com os óculos e a mão sob o queixo).
+ * - Meio   (0.25 -> 0.55): 46% -> 45% (acompanha o movimento das mãos retirando os óculos e o apoio na superfície).
+ * - Final  (0.55 -> 1.00): 45% -> 53% (acompanha a simetria frontal e centraliza a dobradiça e os pinos no close-up final).
+ */
+function getMobileObjectPosition(progress: number): string {
+  const p = Math.max(0, Math.min(1, progress));
+  let xPct = 46;
+  if (p <= 0.25) {
+    xPct = 46;
+  } else if (p <= 0.55) {
+    const t = (p - 0.25) / 0.3;
+    xPct = 46 - t * 1; // 46% -> 45%
+  } else {
+    const t = (p - 0.55) / 0.45;
+    xPct = 45 + t * 8; // 45% -> 53%
+  }
+  return `${xPct.toFixed(1)}% 38%`;
+}
+
 export const HeroCinematographic: React.FC = () => {
   const trackRef = useRef<HTMLDivElement>(null);
   const stickyRef = useRef<HTMLDivElement>(null);
@@ -176,16 +198,17 @@ export const HeroCinematographic: React.FC = () => {
       <section
         id="hero-cinematografico"
         aria-label="Apresentação Nova Ótica Vitaliz"
-        className="relative w-full min-h-[90vh] flex items-center justify-center bg-wine-deep overflow-hidden pt-16"
+        className="relative w-full h-[100svh] min-h-[100svh] md:min-h-[90vh] flex items-center justify-center bg-wine-deep overflow-hidden pt-16"
       >
         <img
           src={posterSrc}
           alt="Nova Ótica Vitaliz — Modelo com armação de grau"
-          className="absolute inset-0 w-full h-full object-contain sm:object-cover opacity-90"
+          className="absolute inset-0 w-full h-full object-cover opacity-90"
+          style={isMobile ? { objectPosition: getMobileObjectPosition(0) } : undefined}
           fetchPriority="high"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-wine-deep via-wine-deep/40 to-transparent" />
-        <HeroOverlay progress={1.0} />
+        <HeroOverlay progress={1.0} layout={isMobile ? 'mobile-fullscreen' : 'overlay'} />
 
         {hasMediaError && (
           <div className="absolute top-20 right-6 z-30 glass-panel px-3 py-1.5 rounded text-caption text-amber-900 bg-amber-100 flex items-center gap-1.5">
@@ -197,61 +220,151 @@ export const HeroCinematographic: React.FC = () => {
     );
   }
 
+  const mobileObjPos = getMobileObjectPosition(scrollProgress);
+
   return (
     <div
       ref={trackRef}
       id="hero-cinematografico"
       aria-label="Experiência Cinematográfica Nova Ótica Vitaliz"
       className="relative w-full"
-      style={{ height: `calc(100vh + ${scrollDistance}px)` }}
+      style={{ height: `calc(100svh + ${scrollDistance}px)` }}
     >
-      {/* Contêiner com fixação sticky natural: garante que as seções seguintes não subam antes de scrollDistance px */}
+      {/* Contêiner com fixação sticky natural: 100svh no mobile e 100dvh no desktop */}
       <div
         ref={stickyRef}
-        className="sticky top-0 w-full h-screen min-h-[100dvh] bg-wine-deep overflow-hidden flex items-center justify-center select-none"
+        className="sticky top-0 w-full h-[100svh] md:h-screen md:min-h-[100dvh] bg-wine-deep overflow-hidden flex items-center justify-center select-none"
       >
-        {/* 1. Camada de Poster Estático (sempre presente atrás do vídeo para evitar flash preto) */}
-        <img
-          src={posterSrc}
-          alt="Primeiro quadro — Modelo com armação Nova Ótica Vitaliz"
-          className={`absolute inset-0 w-full h-full object-contain sm:object-cover transition-opacity duration-700 ease-luxury pointer-events-none ${
-            isVideoReady ? 'opacity-0' : 'opacity-100'
-          }`}
-          fetchPriority="high"
-        />
+        {isMobile ? (
+          /* COMPOSIÇÃO MOBILE FULL-SCREEN (< 768px): 100svh tela cheia com object-cover e object-position dinâmico */
+          <div className="relative w-full h-full flex items-center justify-center bg-wine-deep">
+            {/* 1. Camada de Poster Estático Inicial */}
+            <img
+              src={posterSrc}
+              alt="Primeiro quadro — Modelo com armação Nova Ótica Vitaliz"
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-luxury pointer-events-none ${
+                isVideoReady ? 'opacity-0' : 'opacity-100'
+              }`}
+              style={{ objectPosition: getMobileObjectPosition(0) }}
+              fetchPriority="high"
+            />
 
-        {/* 2. Camada do Vídeo Controlado por Scroll */}
-        <video
-          key={videoSrc}
-          ref={videoRef}
-          src={videoSrc}
-          playsInline
-          muted
-          preload="auto"
-          onLoadedMetadata={() => seek.flush()}
-          onLoadedData={handleLoadedData}
-          onSeeked={() => seek.flush()}
-          onError={handleVideoError}
-          {...debug.eventProps}
-          className={`relative z-10 w-full h-full object-contain sm:object-cover transition-opacity duration-500 ${
-            isVideoReady ? 'opacity-100' : 'opacity-0'
-          }`}
-          aria-hidden="true"
-        />
+            {/* 2. Camada do Vídeo Controlado por Scroll preenchendo 100svh sem faixas vazias */}
+            <video
+              key={videoSrc}
+              ref={videoRef}
+              src={videoSrc}
+              playsInline
+              muted
+              preload="auto"
+              onLoadedMetadata={() => seek.flush()}
+              onLoadedData={handleLoadedData}
+              onSeeked={() => seek.flush()}
+              onError={handleVideoError}
+              {...debug.eventProps}
+              style={{ objectPosition: mobileObjPos }}
+              className={`relative z-10 w-full h-full object-cover transition-opacity duration-500 ${
+                isVideoReady ? 'opacity-100' : 'opacity-0'
+              }`}
+              aria-hidden="true"
+            />
 
-        {/* 3. Poster Final Congelado (aparece suavemente no término do scroll para transição imperceptível) */}
-        <img
-          src={finalPosterSrc}
-          alt="Quadro final — Detalhe macro da armação em acetato translúcido vinho"
-          className="absolute inset-0 z-15 w-full h-full object-contain sm:object-cover pointer-events-none transition-opacity duration-300"
-          style={{
-            opacity: scrollProgress >= 0.98 ? 1 : 0,
-          }}
-          aria-hidden="true"
-        />
+            {/* 3. Poster Final Congelado no término do scroll */}
+            <img
+              src={finalPosterSrc}
+              alt="Quadro final — Detalhe macro da armação em acetato translúcido vinho"
+              className="absolute inset-0 z-15 w-full h-full object-cover pointer-events-none transition-opacity duration-300"
+              style={{
+                opacity: scrollProgress >= 0.98 ? 1 : 0,
+                objectPosition: getMobileObjectPosition(1),
+              }}
+              aria-hidden="true"
+            />
 
-        {/* 4. Overlay Editorial com Headline Oficial e CTA */}
-        <HeroOverlay progress={scrollProgress} />
+            {/* Vinheta superior sutil apenas para proteger a legibilidade do Header flutuante sobre o vídeo full-screen */}
+            <div
+              className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-wine-deep/75 via-wine-deep/25 to-transparent z-15 pointer-events-none"
+              aria-hidden="true"
+            />
+
+            {/* 4. Overlay Editorial Mobile Full-Screen na base sem cobrir rosto ou óculos */}
+            <HeroOverlay progress={scrollProgress} layout="mobile-fullscreen" />
+
+            {/* 6. Indicador de Rolagem Inicial em Cápsula Premium Aprovada (respeita safe-area-inset-bottom) */}
+            <div
+              className="absolute inset-x-0 bottom-0 z-30 flex items-center justify-center pb-[max(0.85rem,env(safe-area-inset-bottom))] transition-opacity duration-300 pointer-events-none"
+              style={{ opacity: Math.max(0, 1 - scrollProgress * 8) }}
+              aria-hidden="true"
+            >
+              <div className="flex flex-col items-center gap-1 px-5 py-2 rounded-full bg-wine-deep/90 backdrop-blur-md border border-gold/50 animate-luxury-glow">
+                <span className="text-[11px] font-sans uppercase tracking-[0.22em] text-champagne-light font-semibold whitespace-nowrap drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+                  Role para Explorar
+                </span>
+                <ChevronDown size={14} className="animate-bounce text-gold-light drop-shadow-[0_0_8px_rgba(223,193,132,0.8)]" />
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* COMPOSIÇÃO DESKTOP & TABLET (>= 768px): 100% Preservada */
+          <>
+            {/* 1. Camada de Poster Estático (sempre presente atrás do vídeo para evitar flash preto) */}
+            <img
+              src={posterSrc}
+              alt="Primeiro quadro — Modelo com armação Nova Ótica Vitaliz"
+              className={`absolute inset-0 w-full h-full object-contain sm:object-cover transition-opacity duration-700 ease-luxury pointer-events-none ${
+                isVideoReady ? 'opacity-0' : 'opacity-100'
+              }`}
+              fetchPriority="high"
+            />
+
+            {/* 2. Camada do Vídeo Controlado por Scroll */}
+            <video
+              key={videoSrc}
+              ref={videoRef}
+              src={videoSrc}
+              playsInline
+              muted
+              preload="auto"
+              onLoadedMetadata={() => seek.flush()}
+              onLoadedData={handleLoadedData}
+              onSeeked={() => seek.flush()}
+              onError={handleVideoError}
+              {...debug.eventProps}
+              className={`relative z-10 w-full h-full object-contain sm:object-cover transition-opacity duration-500 ${
+                isVideoReady ? 'opacity-100' : 'opacity-0'
+              }`}
+              aria-hidden="true"
+            />
+
+            {/* 3. Poster Final Congelado (aparece suavemente no término do scroll para transição imperceptível) */}
+            <img
+              src={finalPosterSrc}
+              alt="Quadro final — Detalhe macro da armação em acetato translúcido vinho"
+              className="absolute inset-0 z-15 w-full h-full object-contain sm:object-cover pointer-events-none transition-opacity duration-300"
+              style={{
+                opacity: scrollProgress >= 0.98 ? 1 : 0,
+              }}
+              aria-hidden="true"
+            />
+
+            {/* 4. Overlay Editorial com Headline Oficial e CTA */}
+            <HeroOverlay progress={scrollProgress} layout="overlay" />
+
+            {/* 6. Indicador de Rolagem Inicial (com destaque e brilho no desktop) */}
+            <div
+              className="absolute bottom-10 md:bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-1.5 transition-opacity duration-300 pointer-events-none w-max max-w-[90vw]"
+              style={{ opacity: Math.max(0, 1 - scrollProgress * 8) }}
+              aria-hidden="true"
+            >
+              <div className="flex flex-col items-center gap-1.5 px-5 py-2.5 rounded-full bg-wine-deep/90 backdrop-blur-md border border-gold/50 animate-luxury-glow">
+                <span className="text-[11px] font-sans uppercase tracking-[0.22em] text-champagne-light font-semibold whitespace-nowrap drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+                  Role para Explorar
+                </span>
+                <ChevronDown size={15} className="animate-bounce text-gold-light drop-shadow-[0_0_8px_rgba(223,193,132,0.8)]" />
+              </div>
+            </div>
+          </>
+        )}
 
         {/* 5. Linha de Progresso Cinemática Sutil (Indicador de scrub no rodapé da seção) */}
         <div
@@ -263,22 +376,6 @@ export const HeroCinematographic: React.FC = () => {
             style={{ width: `${Math.min(100, scrollProgress * 100)}%` }}
           />
         </div>
-
-        {/* 6. Indicador de Rolagem Inicial (com destaque e brilho no mobile e desktop) */}
-        <div
-          className="absolute bottom-10 md:bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-1.5 transition-opacity duration-300 pointer-events-none w-max max-w-[90vw]"
-          style={{ opacity: Math.max(0, 1 - scrollProgress * 8) }}
-          aria-hidden="true"
-        >
-          <div className="flex flex-col items-center gap-1.5 px-5 py-2.5 rounded-full bg-wine-deep/90 backdrop-blur-md border border-gold/50 animate-luxury-glow">
-            <span className="text-[11px] font-sans uppercase tracking-[0.22em] text-champagne-light font-semibold whitespace-nowrap drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
-              Role para Explorar
-            </span>
-            <ChevronDown size={15} className="animate-bounce text-gold-light drop-shadow-[0_0_8px_rgba(223,193,132,0.8)]" />
-          </div>
-        </div>
-
-
       </div>
     </div>
   );
