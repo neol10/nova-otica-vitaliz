@@ -11,22 +11,21 @@ import { ChevronDown, AlertCircle } from 'lucide-react';
 gsap.registerPlugin(ScrollTrigger);
 
 /**
- * Distâncias de rolagem cinematográficas otimizadas:
- * Ágeis e leves para navegação fluida desde o primeiro acesso.
- * - Desktop: 1700px (anterior 4000px)
- * - Tablet: 1400px (anterior 3200px)
- * - Mobile: 1200px (anterior 2600px)
+ * Distâncias de rolagem cinematográficas calibradas para ritmo suave e envolvente:
+ * - Desktop (>= 1024px): 3000px
+ * - Tablet (768px - 1023px): 2400px
+ * - Mobile (< 768px): 2000px
  */
 function getHeroScrollDistance(): number {
-  if (typeof window === 'undefined') return 1700;
+  if (typeof window === 'undefined') return 3000;
   const width = window.innerWidth;
   if (width < 768) {
-    return 1200; // Mobile (< 768px)
+    return 2000; // Mobile (< 768px)
   }
   if (width < 1024) {
-    return 1400; // Tablet (768px - 1023px)
+    return 2400; // Tablet (768px - 1023px)
   }
-  return 1700; // Desktop (>= 1024px)
+  return 3000; // Desktop (>= 1024px)
 }
 
 /** Máximo de recarregamentos do vídeo após erro de mídia antes de cair no modo estático. */
@@ -34,22 +33,22 @@ const MAX_MEDIA_RETRIES = 2;
 
 /**
  * Enquadramento dinâmico horizontal (`object-position`) para o Hero Mobile Full-Screen (< 768px),
- * sincronizado 100% com o progresso do scroll sem interferir no seeking do vídeo:
- * - Início (0.00 -> 0.25): 46% (centraliza o rosto da modelo, os olhos com os óculos e a mão sob o queixo).
- * - Meio   (0.25 -> 0.55): 46% -> 45% (acompanha o movimento das mãos retirando os óculos e o apoio na superfície).
- * - Final  (0.55 -> 1.00): 45% -> 53% (acompanha a simetria frontal e centraliza a dobradiça e os pinos no close-up final).
+ * sincronizado 100% com o progresso do scroll na narrativa Óculos -> Modelo:
+ * - Início (0.00 -> 0.45): 53% -> 45% (centraliza a dobradiça e os pinos no macro dos óculos e acompanha a abertura da armação).
+ * - Meio   (0.45 -> 0.75): 45% -> 46% (acompanha a armação e o movimento das mãos levando os óculos ao rosto).
+ * - Final  (0.75 -> 1.00): 46% (centraliza o rosto da modelo, os olhos com os óculos e a mão sob o queixo).
  */
 function getMobileObjectPosition(progress: number): string {
   const p = Math.max(0, Math.min(1, progress));
-  let xPct = 46;
-  if (p <= 0.25) {
-    xPct = 46;
-  } else if (p <= 0.55) {
-    const t = (p - 0.25) / 0.3;
-    xPct = 46 - t * 1; // 46% -> 45%
+  let xPct = 53;
+  if (p <= 0.45) {
+    const t = p / 0.45;
+    xPct = 53 - t * 8; // 53% -> 45%
+  } else if (p <= 0.75) {
+    const t = (p - 0.45) / 0.3;
+    xPct = 45 + t * 1; // 45% -> 46%
   } else {
-    const t = (p - 0.55) / 0.45;
-    xPct = 45 + t * 8; // 45% -> 53%
+    xPct = 46;
   }
   return `${xPct.toFixed(1)}% 38%`;
 }
@@ -81,18 +80,18 @@ export const HeroCinematographic: React.FC = () => {
   // Diagnóstico (inerte em produção)
   const debug = useHeroDebug(videoRef, seek);
 
-  // Seleção de assets com base no viewport (narrativa invertida: início = mulher, fim = armação)
+  // Seleção de assets com base no viewport (narrativa direta: início = armação, fim = mulher)
   const videoSrc = isMobile
     ? '/assets/video/hero-scroll-mobile.mp4'
     : '/assets/video/hero-scroll-desktop.mp4';
 
   const posterSrc = isMobile
-    ? '/assets/images/hero-final-mobile.webp'
-    : '/assets/images/hero-final-desktop.webp';
-
-  const finalPosterSrc = isMobile
     ? '/assets/images/hero-poster-mobile.webp'
     : '/assets/images/hero-poster-desktop.webp';
+
+  const finalPosterSrc = isMobile
+    ? '/assets/images/hero-final-mobile.webp'
+    : '/assets/images/hero-final-desktop.webp';
 
   const isVideoReady = readySrc === videoSrc;
 
@@ -201,10 +200,10 @@ export const HeroCinematographic: React.FC = () => {
         className="relative w-full h-[100svh] min-h-[100svh] md:min-h-[90vh] flex items-center justify-center bg-wine-deep overflow-hidden pt-16"
       >
         <img
-          src={posterSrc}
+          src={finalPosterSrc}
           alt="Nova Ótica Vitaliz — Modelo com armação de grau"
           className="absolute inset-0 w-full h-full object-cover opacity-90"
-          style={isMobile ? { objectPosition: getMobileObjectPosition(0) } : undefined}
+          style={isMobile ? { objectPosition: getMobileObjectPosition(1) } : undefined}
           fetchPriority="high"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-wine-deep via-wine-deep/40 to-transparent" />

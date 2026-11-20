@@ -65,7 +65,7 @@ export const HeroOverlay: React.FC<HeroOverlayProps> = ({
         />
 
         <div className="relative z-10 w-full max-w-md min-h-[140px] flex items-end">
-          {/* 1. MOMENTO INICIAL (Mobile Full-Screen): "Seu olhar. Seu estilo." */}
+          {/* 1. MOMENTO INICIAL (Mobile Full-Screen): Armação em detalhe */}
           <div
             className="absolute inset-x-0 bottom-0 space-y-2 will-change-transform"
             style={{
@@ -79,21 +79,21 @@ export const HeroOverlay: React.FC<HeroOverlayProps> = ({
             <div className="flex items-center gap-2">
               <span className="h-[1px] w-6 bg-gold/80" />
               <span className="text-caption uppercase tracking-[0.22em] text-gold text-[10px] font-medium">
-                Nova Ótica Vitaliz
+                Alta Precisão & Design
               </span>
             </div>
 
             <h1 className="font-display text-[1.95rem] xs:text-[2.2rem] font-light text-offwhite leading-[1.06] tracking-tight drop-shadow-sm">
-              <span className="block">Seu olhar.</span>
-              <span className="block italic text-gold font-normal">Seu estilo.</span>
+              <span className="block">Os detalhes</span>
+              <span className="block italic text-gold font-normal">fazem a diferença.</span>
             </h1>
 
             <p className="font-sans text-xs sm:text-sm text-champagne-light/90 font-light leading-relaxed max-w-xs">
-              Uma nova perspectiva de elegância.
+              Descubra novas possibilidades para o seu olhar.
             </p>
           </div>
 
-          {/* 2. MOMENTO FINAL (Mobile Full-Screen): "Os detalhes fazem a diferença." + CTA */}
+          {/* 2. MOMENTO FINAL (Mobile Full-Screen): Mulher usando os óculos + CTA */}
           <div
             className="absolute inset-x-0 bottom-0 space-y-2.5 will-change-transform"
             style={{
@@ -107,17 +107,17 @@ export const HeroOverlay: React.FC<HeroOverlayProps> = ({
             <div className="flex items-center gap-2">
               <span className="h-[1px] w-6 bg-gold/80" />
               <span className="text-caption uppercase tracking-[0.22em] text-gold text-[10px] font-medium">
-                Alta Precisão & Design
+                Nova Ótica Vitaliz
               </span>
             </div>
 
-            <h2 className="font-display text-[1.85rem] xs:text-[2.1rem] font-light text-offwhite leading-[1.06] tracking-tight drop-shadow-sm">
-              <span className="block">Os detalhes</span>
-              <span className="block italic text-gold font-normal">fazem a diferença.</span>
+            <h2 className="font-display text-[1.95rem] xs:text-[2.2rem] font-light text-offwhite leading-[1.06] tracking-tight drop-shadow-sm">
+              <span className="block">Seu olhar.</span>
+              <span className="block italic text-gold font-normal">Seu estilo.</span>
             </h2>
 
             <p className="font-sans text-xs sm:text-sm text-champagne-light/90 font-light leading-relaxed max-w-xs">
-              Descubra novas possibilidades para o seu olhar.
+              Uma nova perspectiva de elegância.
             </p>
 
             <div className="pt-2">
@@ -151,7 +151,7 @@ export const HeroOverlay: React.FC<HeroOverlayProps> = ({
       />
 
       {/* ─────────────────────────────────────────────────────────────
-          1. MOMENTO INICIAL: "Seu olhar. Seu estilo." (Mulher)
+          1. MOMENTO INICIAL: "Os detalhes fazem a diferença." (Armação)
           ───────────────────────────────────────────────────────────── */}
       <div
         className="relative z-10 max-w-xl transition-all duration-150 ease-out pt-20 sm:pt-24 md:pt-16"
@@ -167,19 +167,19 @@ export const HeroOverlay: React.FC<HeroOverlayProps> = ({
         <div className="flex items-center gap-2 mb-3">
           <span className="h-[1px] w-6 sm:w-8 bg-gold/70" />
           <span className="text-caption uppercase tracking-[0.25em] text-gold text-[10px] sm:text-xs font-medium">
-            Nova Ótica Vitaliz
+            Alta Precisão & Design
           </span>
         </div>
 
         {/* Headline Inicial */}
         <h1 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light text-offwhite leading-[1.08] tracking-tight drop-shadow-sm">
-          <span className="block">Seu olhar.</span>
-          <span className="block italic text-gold font-normal">Seu estilo.</span>
+          <span className="block">Os detalhes</span>
+          <span className="block italic text-gold font-normal">fazem a diferença.</span>
         </h1>
 
         {/* Texto de Apoio Inicial */}
         <p className="mt-3 font-sans text-xs sm:text-sm md:text-base text-champagne-light/90 max-w-sm sm:max-w-md font-light leading-relaxed">
-          Uma nova perspectiva de elegância.
+          Descubra novas possibilidades para o seu olhar.
         </p>
       </div>
 
@@ -187,7 +187,7 @@ export const HeroOverlay: React.FC<HeroOverlayProps> = ({
       <div className="flex-1 pointer-events-none" aria-hidden="true" />
 
       {/* ─────────────────────────────────────────────────────────────
-          2. MOMENTO FINAL: "Os detalhes fazem a diferença." (Armação)
+          2. MOMENTO FINAL: "Seu olhar. Seu estilo." (Mulher)
           ───────────────────────────────────────────────────────────── */}
       <div
         className="relative z-10 max-w-xl transition-all duration-150 ease-out pb-4 sm:pb-6"
@@ -203,19 +203,19 @@ export const HeroOverlay: React.FC<HeroOverlayProps> = ({
         <div className="flex items-center gap-2 mb-3">
           <span className="h-[1px] w-6 sm:w-8 bg-gold/70" />
           <span className="text-caption uppercase tracking-[0.25em] text-gold text-[10px] sm:text-xs font-medium">
-            Alta Precisão & Design
+            Nova Ótica Vitaliz
           </span>
         </div>
 
         {/* Headline Final */}
         <h2 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light text-offwhite leading-[1.08] tracking-tight drop-shadow-sm">
-          <span className="block">Os detalhes</span>
-          <span className="block italic text-gold font-normal">fazem a diferença.</span>
+          <span className="block">Seu olhar.</span>
+          <span className="block italic text-gold font-normal">Seu estilo.</span>
         </h2>
 
         {/* Texto de Apoio Final */}
         <p className="mt-3 font-sans text-xs sm:text-sm md:text-base text-champagne-light/90 max-w-sm sm:max-w-md font-light leading-relaxed">
-          Descubra novas possibilidades para o seu olhar.
+          Uma nova perspectiva de elegância.
         </p>
 
         {/* CTA Oficial com Destino #colecoes */}
